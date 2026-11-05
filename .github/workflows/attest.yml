@@ -1,0 +1,50 @@
+name: Publicacion y Atestacion Criptografica de APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version de lanzamiento'
+        required: true
+        default: 'v1.5.0'
+      apk_url:
+        description: 'URL directa de la APK en el release'
+        required: true
+        default: 'https://github.com/McFully/juego-tocatoca-releases/releases/download/v1.5.0/Juego_TocaToca_v1.5.0.apk'
+
+permissions:
+  id-token: write
+  attestations: write
+  contents: write
+
+jobs:
+  attest-release:
+    name: Atestar y Certificar APK Publica
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar APK Publica
+        run: |
+          mkdir -p Instaladores
+          curl -L -o Instaladores/Juego_TocaToca_v1.5.0.apk "${{ github.event.inputs.apk_url }}"
+          ls -la Instaladores/
+
+      - name: Generar Hashes SHA-256
+        run: |
+          cd Instaladores
+          sha256sum Juego_TocaToca_v1.5.0.apk > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Generar GitHub Artifact Attestation
+        uses: actions/attest@v4
+        with:
+          subject-path: Instaladores/Juego_TocaToca_v1.5.0.apk
+
+      - name: Actualizar GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "${{ github.event.inputs.version }}"
+          files: |
+            Instaladores/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
